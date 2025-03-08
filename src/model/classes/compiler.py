@@ -49,18 +49,46 @@ class ModelCompiler(nn.Module):
         # Initialize fully connected layers
         self.fc_layers = nn.ModuleList()
         for layer_cfg in self.fc_layers_config:
-            self.fc_layers.append(nn.Linear(layer_cfg['in_features'], layer_cfg['out_features']))
+            layer_type = layer_cfg['type']
+            if layer_type == 'Linear':
+                self.fc_layers.append(nn.Linear(layer_cfg['in_features'], layer_cfg['out_features']))
+            elif layer_type == 'Dropout':
+                self.fc_layers.append(nn.Dropout(layer_cfg['p']))
+            elif layer_type == 'BatchNorm1d':
+                self.fc_layers.append(nn.BatchNorm1d(layer_cfg['num_features']))
+            else:
+                raise ValueError(f"Unsupported layer type: {layer_type}")
 
         # Initialize deconvolutional layers
         self.deconv_layers = nn.ModuleList()
         for layer_cfg in self.deconv_layers_config:
-            self.deconv_layers.append(nn.ConvTranspose2d(
-                layer_cfg['in_channels'],
-                layer_cfg['out_channels'],
-                kernel_size=layer_cfg['kernel_size'],
-                stride=layer_cfg['stride'],
-                padding=layer_cfg['padding']
-            ))
+            layer_type = layer_cfg['type']
+            if layer_type == 'ConvTranspose2d':
+                self.deconv_layers.append(nn.ConvTranspose2d(
+                    layer_cfg['in_channels'],
+                    layer_cfg['out_channels'],
+                    kernel_size=layer_cfg['kernel_size'],
+                    stride=layer_cfg['stride'],
+                    padding=layer_cfg['padding']
+                ))
+            elif layer_type == 'Dropout2d':
+                self.deconv_layers.append(nn.Dropout2d(layer_cfg['p']))
+            elif layer_type == 'BatchNorm2d':
+                self.deconv_layers.append(nn.BatchNorm2d(layer_cfg['num_features']))
+            elif layer_type == 'MaxPool2d':
+                self.deconv_layers.append(nn.MaxPool2d(kernel_size=layer_cfg['kernel_size'], stride=layer_cfg['stride'], padding=layer_cfg['padding']))
+            elif layer_type == 'AvgPool2d':
+                self.deconv_layers.append(nn.AvgPool2d(kernel_size=layer_cfg['kernel_size'], stride=layer_cfg['stride'], padding=layer_cfg['padding']))
+            elif layer_type == 'Conv2d':
+                self.deconv_layers.append(nn.Conv2d(
+                    layer_cfg['in_channels'],
+                    layer_cfg['out_channels'],
+                    kernel_size=layer_cfg['kernel_size'],
+                    stride=layer_cfg['stride'],
+                    padding=layer_cfg['padding']
+                ))
+            else:
+                raise ValueError(f"Unsupported layer type: {layer_type}")
 
     def _set_activation_function(self):
         if self.activation_function_name == "relu":
@@ -81,7 +109,7 @@ class ModelCompiler(nn.Module):
 
     def _prepare_input(self, x):
         x = x.float()  # Ensure x is of type Float
-        x = x.view(-1, self.fc_layers_config[0]['in_features'])  # Reshape x to match the input features of the first FC layer
+        x = x.view(-1, 1)
         return x
 
     def _apply_fc_layers(self, x):
@@ -95,7 +123,6 @@ class ModelCompiler(nn.Module):
     def _apply_deconv_layers(self, x):
         for layer in self.deconv_layers:
             x = self.activation_function(layer(x))
-        x = torch.tanh(x)
         return x
 
     def _set_loss_function(self):
