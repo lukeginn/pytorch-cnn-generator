@@ -3,9 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
-import numpy as np
-import os
-
+from config.paths import Paths
 
 class ModelCompiler(nn.Module):
     def __init__(self):
@@ -15,6 +13,7 @@ class ModelCompiler(nn.Module):
         self.device = self._set_device()
 
     def forward(self, x):
+        x = self._prepare_input(x)
         x = self._apply_fc_layers(x)
         x = self._reshape(x)
         x = self._apply_deconv_layers(x)
@@ -24,6 +23,12 @@ class ModelCompiler(nn.Module):
         self._set_loss_function()
         self._set_optimizer()
         return self
+    
+    def generate_images(self):
+        for i in range(10):
+            input = self._generate_input_tensor(i)
+            generated_image = self._generate_image(input)
+            self._save_image(generated_image, Paths.GENERATED_IMAGES_PATH.value, i)
 
     def _initialize_layers(self):
         self.fc1 = nn.Linear(1, 128) # Input is 1 because we are using a single value to generate an image
@@ -34,9 +39,12 @@ class ModelCompiler(nn.Module):
         self.deconv1 = nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1)
         self.deconv2 = nn.ConvTranspose2d(64, 1, kernel_size=4, stride=2, padding=1)
 
+    def _prepare_input(self, x):
+        x = x.float()  # Ensure x is of type Float
+        x = x.view(-1, 1)  # Reshape x to a single column
+        return x
+
     def _apply_fc_layers(self, x):
-        x = x.float() # Ensure x is of type Float
-        x = x.view(-1, 1) # Reshape x to a single column
         x = self.activation_function(self.fc1(x))
         x = self.activation_function(self.fc2(x))
         x = self.activation_function(self.fc3(x))
@@ -66,23 +74,14 @@ class ModelCompiler(nn.Module):
         self.to(device)
         return device
 
-    def generate_and_save_images(self, num_images=10, output_dir='outputs'):
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        
-        for i in range(num_images):
-            # Generate an input tensor
-            input = torch.tensor([[i]], dtype=torch.float).to(self.device)
-            
-            # Pass the input through the model
-            with torch.no_grad():
-                generated_image = self.forward(input)
-            
-            # Convert the output to a numpy array and reshape it
-            generated_image = generated_image.squeeze().cpu().numpy()
-            
-            # Normalize the image to the range [0, 1]
-            generated_image = (generated_image - generated_image.min()) / (generated_image.max() - generated_image.min())
-            
-            # Save the image
-            plt.imsave(f'{output_dir}/image_{i}.png', generated_image, cmap='gray')
+    def _generate_input_tensor(self, i):
+        return torch.tensor([[i]], dtype=torch.float).to(self.device)
+
+    def _generate_image(self, input):
+        with torch.no_grad():
+            generated_image = self.forward(input)
+        generated_image = generated_image.squeeze().cpu().numpy()
+        return (generated_image - generated_image.min()) / (generated_image.max() - generated_image.min())
+
+    def _save_image(self, image, output_dir, index):
+        plt.imsave(f'{output_dir}/image_{index}.png', image, cmap='gray')

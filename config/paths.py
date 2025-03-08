@@ -11,6 +11,7 @@ class Paths(Enum):
     INPUTS_PATH = BASE_PATH / "inputs"
     OUTPUTS_PATH = BASE_PATH / "outputs"
 
+    GENERATED_IMAGES_PATH = OUTPUTS_PATH / "generated_images"
     MODEL_ARCHITECTURE_PATH = OUTPUTS_PATH / "model_architecture.png"
     CROSS_VALIDATION_RESULTS_PATH = OUTPUTS_PATH / "cross_validation_results.csv"
 

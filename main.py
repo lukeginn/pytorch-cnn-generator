@@ -32,8 +32,7 @@ def main() -> None:
 
     # Train the model
     trainer.train(train_images, train_labels, test_images, test_labels)
-
-    model.generate_and_save_images(num_images=10)
+    model.generate_images()
 
     logger.info("Pipeline completed successfully")
 
