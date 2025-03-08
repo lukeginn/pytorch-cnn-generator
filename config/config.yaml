@@ -7,6 +7,7 @@ model:
   learning_rate: 0.002
   optimizer: Adam
   activation_function: tanh
+  loss_function: MSELoss
   fc_layers:
     - in_features: 1
       out_features: 128
@@ -17,7 +18,7 @@ model:
     - in_features: 512
       out_features: 1024
     - in_features: 1024
-      out_features: 6272  # 7 * 7 * 128
+      out_features: 6272
   view_shape:
     channels: 128
     height: 7

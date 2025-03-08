@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from config.paths import Paths
+from src.model.classes.perceptual_loss import PerceptualLoss
 
 class ModelCompiler(nn.Module):
     def __init__(self, config):
@@ -34,6 +35,8 @@ class ModelCompiler(nn.Module):
     def _load_config(self, config):
         self.learning_rate = config['model']['learning_rate']
         self.optimizer_name = config['model']['optimizer']
+        self.activation_function_name = config['model']['activation_function']
+        self.loss_function_name = config['model']['loss_function']
 
         self.fc_layers_config = config['model']['fc_layers']
         self.deconv_layers_config = config['model']['deconv_layers']
@@ -60,47 +63,16 @@ class ModelCompiler(nn.Module):
             ))
 
     def _set_activation_function(self):
-        self.activation_function = F.relu
-
-    def _set_device(self):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.to(device)
-        return device
-
-    def _set_activation_function(self):
-        self.activation_function = F.relu
-
-    def _set_device(self):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.to(device)
-        return device
-
-    def _set_activation_function(self):
-        self.activation_function = F.relu
-
-    def _set_device(self):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.to(device)
-        return device
-
-    def _set_activation_function(self):
-        self.activation_function = F.relu
-
-    def _set_device(self):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.to(device)
-        return device
-
-    def _set_activation_function(self):
-        self.activation_function = F.relu
-
-    def _set_device(self):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.to(device)
-        return device
-
-    def _set_activation_function(self):
-        self.activation_function = F.relu
+        if self.activation_function_name == "relu":
+            self.activation_function = F.relu
+        elif self.activation_function_name == "leaky_relu":
+            self.activation_function = F.leaky_relu
+        elif self.activation_function_name == "sigmoid":
+            self.activation_function = F.sigmoid
+        elif self.activation_function_name == "tanh":
+            self.activation_function = F.tanh
+        else:
+            raise ValueError(f"Unsupported activation function: {self.activation_function_name}")
 
     def _set_device(self):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -127,13 +99,26 @@ class ModelCompiler(nn.Module):
         return x
 
     def _set_loss_function(self):
-        self.criterion = nn.MSELoss()  # Mean Squared Error loss
+        if self.loss_function_name == 'MSELoss':
+            self.criterion = nn.MSELoss()  # Mean Squared Error loss
+        elif self.loss_function_name == 'L1Loss':
+            self.criterion = nn.L1Loss()  # Mean Absolute Error loss
+        elif self.loss_function_name == 'BCEWithLogitsLoss':
+            self.criterion = nn.BCEWithLogitsLoss()  # Binary Cross-Entropy loss
+        elif self.loss_function_name == 'PerceptualLoss':
+            self.criterion = PerceptualLoss()  # Custom Perceptual Loss
+        else:
+            raise ValueError(f"Invalid loss function name: {self.loss_function_name}")
 
     def _set_optimizer(self):
         if self.optimizer_name == 'Adam':
             self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, betas=(0.5, 0.999))
+        elif self.optimizer_name == 'SGD':
+            self.optimizer = optim.SGD(self.parameters(), lr=self.learning_rate, momentum=0.9)
+        elif self.optimizer_name == 'RMSprop':
+            self.optimizer = optim.RMSprop(self.parameters(), lr=self.learning_rate)
         else:
-            ValueError("Invalid optimizer name")
+            raise ValueError(f"Invalid optimizer name: {self.optimizer_name}")
 
     def _generate_input_tensor(self, i):
         return torch.tensor([[i]], dtype=torch.float).to(self.device)
