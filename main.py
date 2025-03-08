@@ -22,7 +22,7 @@ def main() -> None:
     train_images, train_labels, test_images, test_labels = DataProcessor.run(data)
 
     # Compile the model
-    model = ModelCompiler()
+    model = ModelCompiler(config)
     model.compile()
 
     # Initialize the trainer

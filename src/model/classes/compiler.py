@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 from config.paths import Paths
 
 class ModelCompiler(nn.Module):
-    def __init__(self):
+    def __init__(self, config):
         super(ModelCompiler, self).__init__()
+        self._load_config(config)
         self._initialize_layers()
         self._set_activation_function()
         self.device = self._set_device()
@@ -30,49 +31,109 @@ class ModelCompiler(nn.Module):
             generated_image = self._generate_image(input)
             self._save_image(generated_image, Paths.GENERATED_IMAGES_PATH.value, i)
 
+    def _load_config(self, config):
+        self.learning_rate = config['model']['learning_rate']
+        self.optimizer_name = config['model']['optimizer']
+
+        self.fc_layers_config = config['model']['fc_layers']
+        self.deconv_layers_config = config['model']['deconv_layers']
+
+        self.view_shape_channels = config['model']['view_shape']['channels']
+        self.view_shape_height = config['model']['view_shape']['height']
+        self.view_shape_width = config['model']['view_shape']['width']
+
     def _initialize_layers(self):
-        self.fc1 = nn.Linear(1, 128) # Input is 1 because we are using a single value to generate an image
-        self.fc2 = nn.Linear(128, 256)
-        self.fc3 = nn.Linear(256, 512)
-        self.fc4 = nn.Linear(512, 1024)
-        self.fc5 = nn.Linear(1024, 7 * 7 * 128)
-        self.deconv1 = nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1)
-        self.deconv2 = nn.ConvTranspose2d(64, 1, kernel_size=4, stride=2, padding=1)
+        # Initialize fully connected layers
+        self.fc_layers = nn.ModuleList()
+        for layer_cfg in self.fc_layers_config:
+            self.fc_layers.append(nn.Linear(layer_cfg['in_features'], layer_cfg['out_features']))
 
-    def _prepare_input(self, x):
-        x = x.float()  # Ensure x is of type Float
-        x = x.view(-1, 1)  # Reshape x to a single column
-        return x
-
-    def _apply_fc_layers(self, x):
-        x = self.activation_function(self.fc1(x))
-        x = self.activation_function(self.fc2(x))
-        x = self.activation_function(self.fc3(x))
-        x = self.activation_function(self.fc4(x))
-        x = self.activation_function(self.fc5(x))
-        return x
-
-    def _reshape(self, x):
-        return x.view(-1, 128, 7, 7)  # Reshape to 7x7x128 feature maps
-
-    def _apply_deconv_layers(self, x):
-        x = self.activation_function(self.deconv1(x))
-        x = torch.tanh(self.deconv2(x))
-        return x
+        # Initialize deconvolutional layers
+        self.deconv_layers = nn.ModuleList()
+        for layer_cfg in self.deconv_layers_config:
+            self.deconv_layers.append(nn.ConvTranspose2d(
+                layer_cfg['in_channels'],
+                layer_cfg['out_channels'],
+                kernel_size=layer_cfg['kernel_size'],
+                stride=layer_cfg['stride'],
+                padding=layer_cfg['padding']
+            ))
 
     def _set_activation_function(self):
         self.activation_function = F.relu
-
-    def _set_loss_function(self):
-        self.criterion = nn.MSELoss()  # Mean Squared Error loss
-
-    def _set_optimizer(self):
-        self.optimizer = optim.Adam(self.parameters(), lr=0.0002, betas=(0.5, 0.999))
 
     def _set_device(self):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(device)
         return device
+
+    def _set_activation_function(self):
+        self.activation_function = F.relu
+
+    def _set_device(self):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device)
+        return device
+
+    def _set_activation_function(self):
+        self.activation_function = F.relu
+
+    def _set_device(self):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device)
+        return device
+
+    def _set_activation_function(self):
+        self.activation_function = F.relu
+
+    def _set_device(self):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device)
+        return device
+
+    def _set_activation_function(self):
+        self.activation_function = F.relu
+
+    def _set_device(self):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device)
+        return device
+
+    def _set_activation_function(self):
+        self.activation_function = F.relu
+
+    def _set_device(self):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device)
+        return device
+
+    def _prepare_input(self, x):
+        x = x.float()  # Ensure x is of type Float
+        x = x.view(-1, self.fc_layers_config[0]['in_features'])  # Reshape x to match the input features of the first FC layer
+        return x
+
+    def _apply_fc_layers(self, x):
+        for layer in self.fc_layers:
+            x = self.activation_function(layer(x))
+        return x
+
+    def _reshape(self, x):
+        return x.view(-1, self.view_shape_channels, self.view_shape_height, self.view_shape_width)
+
+    def _apply_deconv_layers(self, x):
+        for layer in self.deconv_layers:
+            x = self.activation_function(layer(x))
+        x = torch.tanh(x)
+        return x
+
+    def _set_loss_function(self):
+        self.criterion = nn.MSELoss()  # Mean Squared Error loss
+
+    def _set_optimizer(self):
+        if self.optimizer_name == 'Adam':
+            self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, betas=(0.5, 0.999))
+        else:
+            ValueError("Invalid optimizer name")
 
     def _generate_input_tensor(self, i):
         return torch.tensor([[i]], dtype=torch.float).to(self.device)
