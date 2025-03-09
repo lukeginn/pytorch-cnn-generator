@@ -8,6 +8,12 @@ from src.model.classes.perceptual_loss import PerceptualLoss
 
 class ModelCompiler(nn.Module):
     def __init__(self, config):
+        """
+        Initialize the ModelCompiler with the given configuration.
+
+        Args:
+            config (dict): Configuration dictionary containing model parameters.
+        """
         super(ModelCompiler, self).__init__()
         self._load_config(config)
         self._initialize_layers()
@@ -15,6 +21,15 @@ class ModelCompiler(nn.Module):
         self.device = self._set_device()
 
     def forward(self, x):
+        """
+        Forward pass through the network.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            torch.Tensor: Output tensor after passing through the network.
+        """
         x = self._prepare_input(x)
         x = self._apply_fc_layers(x)
         x = self._reshape(x)
@@ -22,11 +37,20 @@ class ModelCompiler(nn.Module):
         return x
 
     def compile(self):
+        """
+        Compile the model by setting the loss function and optimizer.
+
+        Returns:
+            ModelCompiler: The compiled model.
+        """
         self._set_loss_function()
         self._set_optimizer()
         return self
     
     def generate_images(self):
+        """
+        Generate and save images using the model.
+        """
         for i in range(10):
             input = self._generate_input_tensor(i)
             generated_image = self._generate_image(input)

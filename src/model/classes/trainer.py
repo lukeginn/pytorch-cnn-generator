@@ -1,6 +1,7 @@
 import logging as logger
 import wandb
 import numpy as np
+from sklearn.model_selection import KFold
 from src.model.classes.trainer_utils import ModelTrainerUtils
 
 # A bug was found in the numpy library that causes the int and bool types to be overwritten.
@@ -47,6 +48,7 @@ class ModelTrainer:
         Args:
             model (nn.Module): The generative model to be trained and evaluated.
             config (object): The configuration object containing training parameters.
+            log_to_wandb (bool): Flag to indicate whether to log to Weights and Biases.
         """
         self._initialize_config(config)
         self.model, self.device = ModelTrainerUtils.initialize_model(model)
@@ -88,13 +90,15 @@ class ModelTrainer:
                 wandb.log({"epoch": epoch + 1, "loss": avg_loss}, step=epoch + 1)
 
             if (epoch + 1) % self.evaluation_frequency == 0:
-                self.evaluate(test_images, test_labels, epoch)
+                ModelTrainerUtils.evaluate_and_log(
+                    self, train_images, train_labels, test_images, test_labels, epoch
+                )
 
         if self.log_to_wandb:
             wandb.finish()
             logger.info("WandB run has been stopped.")
 
-    def evaluate(self, images, labels, epoch):
+    def evaluate(self, images, labels, dataset_type):
         """
         Evaluates the model on the provided dataset.
 
@@ -118,18 +122,52 @@ class ModelTrainer:
             images, labels, self.batch_size, self.evaluation_shuffle
         )
 
-        generated_images = ModelTrainerUtils.generate_images(
+        true_images, generated_images = ModelTrainerUtils.generate_images(
             self.model, data_loader, self.device
         )
 
-        # Log generated images to WandB
-        if self.log_to_wandb:
-            wandb.log(
-                {"generated_images": [wandb.Image(img) for img in generated_images]},
-                step=epoch + 1,
-            )
+        metrics = ModelTrainerUtils.compute_metrics(true_images, generated_images)
+        ModelTrainerUtils.log_evaluation_metrics(metrics, dataset_type)
 
-        return generated_images
+        return metrics
+    
+    def cross_validate(self, images, labels):
+        """
+        Performs k-fold cross-validation on the provided dataset.
+
+        Args:
+            images (numpy.ndarray): The images for cross-validation.
+            labels (numpy.ndarray): The labels corresponding to the images.
+            k_folds (int): The number of folds for cross-validation.
+
+        Purpose:
+            - Splits the dataset into k folds.
+            - Trains and evaluates the model on each fold.
+            - Logs the average metrics across all folds.
+        """
+        original_log_to_wandb = self.log_to_wandb
+        self.log_to_wandb = False  # Disable wandb logging for cross-validation
+
+        kf = KFold(n_splits=self.k_folds, shuffle=self.cross_validation_shuffle)
+        fold_metrics = []
+
+        for fold, (train_index, val_index) in enumerate(kf.split(images)):
+            logger.info(f"Fold {fold+1}/{self.k_folds}")
+            metrics = ModelTrainerUtils.train_and_evaluate_fold(
+                self, images, labels, train_index, val_index, fold
+            )
+            fold_metrics.append(metrics)
+
+        avg_metrics = ModelTrainerUtils.compute_average_metrics(fold_metrics)
+        ModelTrainerUtils.log_cross_validation_metrics(
+            avg_metrics, self.k_folds, self.log_to_wandb
+        )
+
+        self.log_to_wandb = (
+            original_log_to_wandb  # Re-enable wandb logging after cross-validation
+        )
+
+        return avg_metrics
 
     def _initialize_config(self, config):
         self.log_to_wandb = config["logging"]["log_to_wandb"]
@@ -138,3 +176,5 @@ class ModelTrainer:
         self.training_shuffle = config["model"]["shuffle"]
         self.evaluation_shuffle = config["evaluation"]["shuffle"]
         self.evaluation_frequency = config["evaluation"]["epoch_frequency"]
+        self.k_folds = config["cross_validation"]["k_folds"]
+        self.cross_validation_shuffle = config["cross_validation"]["shuffle"]

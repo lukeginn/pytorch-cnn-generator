@@ -1,0 +1,4 @@
+shuffle,batch_size,epochs,learning_rate,optimizer,activation_function,dropout,dropout2d,average_mae,average_mse
+True,512,5,0.001,Adam,relu,0.0,0.2,0.6551176071166992,0.6745320320129394
+True,512,5,0.001,Adam,relu,0.2,0.2,0.6536431789398194,0.6758886337280273
+True,512,5,0.001,Adam,relu,0.4,0.2,0.6566210150718689,0.6805913329124451

@@ -3,6 +3,7 @@ from src.data.reader import DataReader
 from src.data.processor import DataProcessor
 from src.model.classes.compiler import ModelCompiler
 from src.model.classes.trainer import ModelTrainer
+from src.model.classes.tuner import HyperparameterTuner
 import logging as logger
 import warnings
 
@@ -20,6 +21,12 @@ def main() -> None:
 
     data = DataReader.load_data()
     train_images, train_labels, test_images, test_labels = DataProcessor.run(data)
+
+    if config.cross_validation.tune:
+        tuner = HyperparameterTuner(config)
+        best_params, best_score, results_table, config = tuner.tune(
+            train_images, train_labels
+        )
 
     # Compile the model
     model = ModelCompiler(config)

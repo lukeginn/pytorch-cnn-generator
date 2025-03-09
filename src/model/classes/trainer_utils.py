@@ -1,10 +1,11 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+#from skimage.metrics import structural_similarity as ssim, peak_signal_noise_ratio as psnr
 import logging as logger
 import wandb
 import time
-
+import numpy as np
 
 class ModelTrainerUtils:
     @staticmethod
@@ -16,40 +17,38 @@ class ModelTrainerUtils:
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
     @staticmethod
-    def gather_predictions(model, data_loader, device):
-        all_labels = []
-        all_predictions = []
+    def generate_images(model, data_loader, device):
+        true_images = []
+        generated_images = []
         with torch.no_grad():
             for images, labels in data_loader:
                 images, labels = images.to(device), labels.to(device)
-                outputs = model(labels)
-                _, predicted = torch.max(outputs.data, 1)
-                all_labels.extend(labels.cpu().numpy())
-                all_predictions.extend(predicted.cpu().numpy())
-        return all_labels, all_predictions
+                outputs = model(labels) 
+                true_images.extend(images.cpu().numpy())
+                generated_images.extend(outputs.cpu().numpy())
+        return true_images, generated_images
 
     @staticmethod
-    def compute_metrics(labels, predictions):
-        accuracy = accuracy_score(labels, predictions)
-        precision = precision_score(labels, predictions, average="weighted")
-        recall = recall_score(labels, predictions, average="weighted")
-        f1 = f1_score(labels, predictions, average="weighted")
-        return accuracy, precision, recall, f1
+    def compute_metrics(true_images, generated_images):
+        mae = mean_absolute_error(np.array(true_images).flatten(), np.array(generated_images).flatten())
+        mse = mean_squared_error(np.array(true_images).flatten(), np.array(generated_images).flatten())
+        #ssim_score = ssim(true_images, generated_images, multichannel=True)
+        #psnr_score = psnr(true_images, generated_images)
+        #return mse, ssim_score, psnr_score
+        return mae, mse
 
     @staticmethod
     def compute_average_metrics(fold_metrics):
-        avg_accuracy = sum([metrics[0] for metrics in fold_metrics]) / len(fold_metrics)
-        avg_precision = sum([metrics[1] for metrics in fold_metrics]) / len(
-            fold_metrics
-        )
-        avg_recall = sum([metrics[2] for metrics in fold_metrics]) / len(fold_metrics)
-        avg_f1 = sum([metrics[3] for metrics in fold_metrics]) / len(fold_metrics)
+        avg_mae = sum([metrics[0] for metrics in fold_metrics]) / len(fold_metrics)
+        avg_mse = sum([metrics[1] for metrics in fold_metrics]) / len(fold_metrics)
+        #avg_ssim = sum([metrics[2] for metrics in fold_metrics]) / len(fold_metrics)
+        #avg_psnr = sum([metrics[3] for metrics in fold_metrics]) / len(fold_metrics)
 
         scores = {
-            "average_accuracy": avg_accuracy,
-            "average_precision": avg_precision,
-            "average_recall": avg_recall,
-            "average_f1": avg_f1,
+            "average_mae": avg_mae,
+            "average_mse": avg_mse,
+            #"average_ssim": avg_ssim,
+            #"average_psnr": avg_psnr,
         }
 
         return scores
@@ -77,22 +76,12 @@ class ModelTrainerUtils:
         for images, labels in data_loader:
             images, labels = images.to(device), labels.to(device)
             model.optimizer.zero_grad()
-            outputs = model(labels)  # Assuming the model needs labels as input
-            loss = model.criterion(outputs, images)  # Assuming the loss is calculated between outputs and true images
+            outputs = model(labels) 
+            loss = model.criterion(outputs, images)
             loss.backward()
             model.optimizer.step()
             running_loss += loss.item()
         return running_loss / len(data_loader)
-
-    @staticmethod
-    def generate_images(model, data_loader, device):
-        generated_images = []
-        with torch.no_grad():
-            for images, labels in data_loader:
-                images, labels = images.to(device), labels.to(device)
-                outputs = model(labels)  # Assuming the model needs labels as input
-                generated_images.extend(outputs.cpu().numpy())
-        return generated_images
 
     @staticmethod
     def evaluate_and_log(
@@ -138,23 +127,23 @@ class ModelTrainerUtils:
 
     @staticmethod
     def log_cross_validation_metrics(metrics, k_folds, log_to_wandb):
-        accuracy = metrics["average_accuracy"]
-        precision = metrics["average_precision"]
-        recall = metrics["average_recall"]
-        f1 = metrics["average_f1"]
+        mae = metrics["average_mae"]
+        mse = metrics["average_mse"]
+        # ssim = metrics["average_ssim"]
+        # psnr = metrics["average_psnr"]
 
         logger.info(f"Cross-Validation with {k_folds} folds:")
-        logger.info(f"Average Accuracy: {accuracy:.4f}")
-        logger.info(f"Average Precision: {precision:.4f}")
-        logger.info(f"Average Recall: {recall:.4f}")
-        logger.info(f"Average F1 Score: {f1:.4f}")
+        logger.info(f"Average MAE: {mae:.4f}")
+        logger.info(f"Average MSE: {mse:.4f}")
+        # logger.info(f"Average SSIM: {ssim:.4f}")
+        # logger.info(f"Average PNSR: {psnr:.4f}")
 
         if log_to_wandb:
             wandb.log(
                 {
-                    "cv_average_accuracy": accuracy,
-                    "cv_average_precision": precision,
-                    "cv_average_recall": recall,
-                    "cv_average_f1": f1,
+                    "cv_average_mae": mae,
+                    "cv_average_mse": mse,
+                    # "cv_average_ssim": ssim,
+                    # "cv_average_psnr": psnr,
                 }
             )
