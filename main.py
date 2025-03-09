@@ -31,6 +31,7 @@ def main() -> None:
     # Compile the model
     model = ModelCompiler(config)
     model.compile()
+    model.visualize_architecture()
 
     # Initialize the trainer
     trainer = ModelTrainer(

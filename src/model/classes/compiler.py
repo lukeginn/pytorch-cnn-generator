@@ -3,7 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from torchviz import make_dot
 from config.paths import Paths
+import logging as logger
 from src.model.classes.perceptual_loss import PerceptualLoss
 
 class ModelCompiler(nn.Module):
@@ -55,6 +57,25 @@ class ModelCompiler(nn.Module):
             input = self._generate_input_tensor(i)
             generated_image = self._generate_image(input)
             self._save_image(generated_image, Paths.GENERATED_IMAGES_PATH.value, i)
+
+    def visualize_architecture(self):
+        """
+        Visualizes the model architecture with tensor shapes.
+        """
+        # Create a random input tensor with the shape expected by the model
+        x = torch.randn((1, self.view_shape_channels, self.view_shape_height, self.view_shape_width)).to(self.device)
+        y = self.forward(x)
+
+        # Create a dot graph of the model
+        dot = self._create_dot_graph(y)
+        self._customize_graph(dot)
+        self._add_shapes_to_nodes(dot)
+
+        # Save the graph to a file
+        path = str(Paths.MODEL_ARCHITECTURE_PATH.value).rsplit(".", 1)[0]
+        dot.render(path, format="png")
+
+        logger.info(f"Model architecture saved to {Paths.MODEL_ARCHITECTURE_PATH.value}")
 
     def _load_config(self, config):
         self.learning_rate = config['model']['learning_rate']
@@ -182,3 +203,21 @@ class ModelCompiler(nn.Module):
 
     def _save_image(self, image, output_dir, index):
         plt.imsave(f'{output_dir}/image_{index}.png', image, cmap='gray')
+
+    def _create_dot_graph(self, y):
+        return make_dot(y, params=dict(self.named_parameters()))
+
+    def _customize_graph(self, dot):
+        dot.graph_attr.update(dpi="300")
+        dot.node_attr.update(shape="box", style="filled", fillcolor="lightblue")
+        dot.edge_attr.update(color="gray")
+
+    def _add_shapes_to_nodes(self, dot):
+        for layer in self.modules():
+            if (
+                isinstance(layer, (nn.Linear, nn.ConvTranspose2d))
+                and "shape_str" in layer.__dict__
+            ):
+                node = dot.node(str(id(layer)))
+                if node:
+                    node.attr["label"] += f"\n{layer.shape_str}"
