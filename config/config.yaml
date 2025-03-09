@@ -6,7 +6,7 @@ model:
   epochs: 70
   learning_rate: 0.002
   optimizer: Adam
-  activation_function: relu
+  activation_function: leaky_relu
   loss_function: MSELoss
   fc_layers:
     - type: Linear
@@ -65,10 +65,10 @@ cross_validation:
     batch_size: [1024]
     epochs: [70]
     learning_rate: [0.002]
-    optimizer: [Adam]
-    activation_function: [relu]
+    optimizer: [Adam, SGD, RMSprop]
+    activation_function: [leaky_relu]
     dropout: [0.3]
-    dropout2d: [0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    dropout2d: [0]
 
 logging:
   log_to_wandb: True
