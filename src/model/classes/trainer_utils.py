@@ -95,10 +95,12 @@ class ModelTrainerUtils:
 
     @staticmethod
     def log_metrics(trainer, metrics, dataset_type, epoch):
+        mae, mse = metrics
         if trainer.log_to_wandb:
             wandb.log(
                 {
-                    f"{dataset_type}_metrics": metrics,
+                    f"{dataset_type}_mae": mae,
+                    f"{dataset_type}_mse": mse,
                 },
                 step=epoch + 1,
             )

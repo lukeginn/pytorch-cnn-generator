@@ -2,8 +2,8 @@ random_state: 42
 
 model:
   shuffle: True
-  batch_size: 2048
-  epochs: 50
+  batch_size: 1024
+  epochs: 70
   learning_rate: 0.002
   optimizer: Adam
   activation_function: relu
@@ -11,24 +11,29 @@ model:
   fc_layers:
     - type: Linear
       in_features: 1
+      out_features: 32
+    - type: Dropout
+      p: 0
+    - type: Linear
+      in_features: 32
       out_features: 128
     - type: Dropout
-      p: 0.2
+      p: 0
     - type: Linear
       in_features: 128
-      out_features: 512
+      out_features: 1024
     - type: Dropout
-      p: 0.2
+      p: 0
     - type: Linear
-      in_features: 512
-      out_features: 3136
+      in_features: 1024
+      out_features: 6272
   view_shape:
-    channels: 64
+    channels: 128
     height: 7
     width: 7
   deconv_layers:
     - type: ConvTranspose2d
-      in_channels: 64
+      in_channels: 128
       out_channels: 32
       kernel_size: 4
       stride: 2
@@ -36,7 +41,7 @@ model:
     # - type: BatchNorm2d
     #   num_features: 32
     - type: Dropout2d
-      p: 0.2
+      p: 0
     - type: ConvTranspose2d
       in_channels: 32
       out_channels: 1
@@ -57,14 +62,14 @@ cross_validation:
   metric_to_optimize: average_mse
   param_grid:
     shuffle: [True]
-    batch_size: [512]
-    epochs: [5]
-    learning_rate: [0.001]
+    batch_size: [1024]
+    epochs: [70]
+    learning_rate: [0.002]
     optimizer: [Adam]
     activation_function: [relu]
-    dropout: [0,0.20,0.4]
-    dropout2d: [0.20]
+    dropout: [0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    dropout2d: [0]
 
 logging:
-  log_to_wandb: False
-  project_name: 'mnist_cnn'
+  log_to_wandb: True
+  project_name: 'mnist_cnn_image_generator'
