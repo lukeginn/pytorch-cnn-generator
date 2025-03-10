@@ -12,16 +12,22 @@ model:
     - type: Linear
       in_features: 1
       out_features: 32
+    - type: BatchNorm1d
+      num_features: 32
     - type: Dropout
       p: 0.3
     - type: Linear
       in_features: 32
       out_features: 128
+    - type: BatchNorm1d
+      num_features: 128
     - type: Dropout
       p: 0.3
     - type: Linear
       in_features: 128
       out_features: 1024
+    - type: BatchNorm1d
+      num_features: 1024
     - type: Dropout
       p: 0.3
     - type: Linear
@@ -38,8 +44,8 @@ model:
       kernel_size: 4
       stride: 2
       padding: 1
-    # - type: BatchNorm2d
-    #   num_features: 32
+    - type: BatchNorm2d
+      num_features: 32
     - type: Dropout2d
       p: 0
     - type: ConvTranspose2d
