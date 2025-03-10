@@ -5,7 +5,7 @@ model:
   batch_size: 1024
   epochs: 70
   learning_rate: 0.002
-  optimizer: Adam
+  optimizer: RMSprop
   activation_function: leaky_relu
   loss_function: MSELoss
   fc_layers:
@@ -56,7 +56,7 @@ evaluation:
   shuffle: True
 
 cross_validation:
-  tune: True
+  tune: False
   k_folds: 5
   shuffle: True
   metric_to_optimize: average_mse
@@ -65,7 +65,7 @@ cross_validation:
     batch_size: [1024]
     epochs: [70]
     learning_rate: [0.002]
-    optimizer: [Adam, SGD, RMSprop]
+    optimizer: [RMSprop]
     activation_function: [leaky_relu]
     dropout: [0.3]
     dropout2d: [0]

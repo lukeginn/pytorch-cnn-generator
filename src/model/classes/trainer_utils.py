@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-#from skimage.metrics import structural_similarity as ssim, peak_signal_noise_ratio as psnr
+from skimage.metrics import structural_similarity as ssim, peak_signal_noise_ratio as psnr
 import logging as logger
 import wandb
 import time
@@ -30,25 +30,26 @@ class ModelTrainerUtils:
 
     @staticmethod
     def compute_metrics(true_images, generated_images):
-        mae = mean_absolute_error(np.array(true_images).flatten(), np.array(generated_images).flatten())
-        mse = mean_squared_error(np.array(true_images).flatten(), np.array(generated_images).flatten())
-        #ssim_score = ssim(true_images, generated_images, multichannel=True)
-        #psnr_score = psnr(true_images, generated_images)
-        #return mse, ssim_score, psnr_score
-        return mae, mse
+        true_images = np.array(true_images)
+        generated_images = np.array(generated_images)
+        mae = mean_absolute_error(true_images.flatten(), generated_images.flatten())
+        mse = mean_squared_error(true_images.flatten(), generated_images.flatten())
+        ssim_score = ssim(true_images, generated_images, win_size=7, channel_axis=1, data_range=1.0)
+        psnr_score = psnr(true_images, generated_images, data_range=1.0)
+        return mae, mse, ssim_score, psnr_score
 
     @staticmethod
     def compute_average_metrics(fold_metrics):
         avg_mae = sum([metrics[0] for metrics in fold_metrics]) / len(fold_metrics)
         avg_mse = sum([metrics[1] for metrics in fold_metrics]) / len(fold_metrics)
-        #avg_ssim = sum([metrics[2] for metrics in fold_metrics]) / len(fold_metrics)
-        #avg_psnr = sum([metrics[3] for metrics in fold_metrics]) / len(fold_metrics)
+        avg_ssim = sum([metrics[2] for metrics in fold_metrics]) / len(fold_metrics)
+        avg_psnr = sum([metrics[3] for metrics in fold_metrics]) / len(fold_metrics)
 
         scores = {
             "average_mae": avg_mae,
             "average_mse": avg_mse,
-            #"average_ssim": avg_ssim,
-            #"average_psnr": avg_psnr,
+            "average_ssim": avg_ssim,
+            "average_psnr": avg_psnr,
         }
 
         return scores
@@ -95,12 +96,14 @@ class ModelTrainerUtils:
 
     @staticmethod
     def log_metrics(trainer, metrics, dataset_type, epoch):
-        mae, mse = metrics
+        mae, mse, ssim, psnr = metrics
         if trainer.log_to_wandb:
             wandb.log(
                 {
                     f"{dataset_type}_mae": mae,
                     f"{dataset_type}_mse": mse,
+                    f"{dataset_type}_ssim": ssim,
+                    f"{dataset_type}_psnr": psnr,
                 },
                 step=epoch + 1,
             )
@@ -131,21 +134,21 @@ class ModelTrainerUtils:
     def log_cross_validation_metrics(metrics, k_folds, log_to_wandb):
         mae = metrics["average_mae"]
         mse = metrics["average_mse"]
-        # ssim = metrics["average_ssim"]
-        # psnr = metrics["average_psnr"]
+        ssim = metrics["average_ssim"]
+        psnr = metrics["average_psnr"]
 
         logger.info(f"Cross-Validation with {k_folds} folds:")
         logger.info(f"Average MAE: {mae:.4f}")
         logger.info(f"Average MSE: {mse:.4f}")
-        # logger.info(f"Average SSIM: {ssim:.4f}")
-        # logger.info(f"Average PNSR: {psnr:.4f}")
+        logger.info(f"Average SSIM: {ssim:.4f}")
+        logger.info(f"Average PNSR: {psnr:.4f}")
 
         if log_to_wandb:
             wandb.log(
                 {
                     "cv_average_mae": mae,
                     "cv_average_mse": mse,
-                    # "cv_average_ssim": ssim,
-                    # "cv_average_psnr": psnr,
+                    "cv_average_ssim": ssim,
+                    "cv_average_psnr": psnr,
                 }
             )
