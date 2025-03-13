@@ -170,10 +170,15 @@ class ModelCompiler(nn.Module):
 
     def _reshape(self, x):
         return x.view(-1, self.view_shape_channels, self.view_shape_height, self.view_shape_width)
-
+    
     def _apply_deconv_layers(self, x):
-        for layer in self.deconv_layers:
-            x = self.activation_function(layer(x))
+        for i, layer in enumerate(self.deconv_layers):
+            if i == len(self.deconv_layers) - 1:
+                x = torch.tanh(
+                    layer(x)
+                )  # The output layer uses tanh activation function.
+            else:
+                x = self.activation_function(layer(x))
         return x
 
     def _set_loss_function(self):
